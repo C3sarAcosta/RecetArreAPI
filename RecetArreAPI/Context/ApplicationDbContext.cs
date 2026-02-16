@@ -4,7 +4,7 @@ using RecetArreAPI.Models;
 
 namespace RecetArreAPI.Context
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions options) : base(options)
         {
@@ -19,7 +19,10 @@ namespace RecetArreAPI.Context
             // ---------- ApplicationUser ----------
             builder.Entity<ApplicationUser>(e =>
             {
-                e.Property(x => x.DisplayName).HasMaxLength(60).IsRequired();
+                e.HasDiscriminator<string>("Discriminator")
+                    .HasValue("IdentityUser")
+                    .HasValue(nameof(ApplicationUser));
+                e.Property(x => x.DisplayName).HasMaxLength(60);
                 e.Property(x => x.CreatedAtUtc).HasDefaultValueSql("now()");
                 e.HasIndex(x => x.DisplayName);
             });

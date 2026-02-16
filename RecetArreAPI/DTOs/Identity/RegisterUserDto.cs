@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RecetArreAPI.DTOs.Identity
 {
-    public class CredencialesUsuario
+    public class RegisterUserDto
     {
         [Required]
         [EmailAddress]
@@ -10,5 +10,9 @@ namespace RecetArreAPI.DTOs.Identity
 
         [Required]
         public string Password { get; set; } = default!;
+
+        [Required]
+        [StringLength(60)]
+        public string DisplayName { get; set; } = default!;
     }
 }

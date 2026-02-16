@@ -5,9 +5,8 @@ namespace RecetArreAPI.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        [Required]
         [StringLength(60)]
-        public string DisplayName { get; set; } = default!;
+        public string? DisplayName { get; set; }
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

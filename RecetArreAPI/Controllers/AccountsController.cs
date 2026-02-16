@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using RecetArreAPI.DTOs.Identity;
+using RecetArreAPI.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,16 +14,16 @@ namespace RecetArreAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CuentasController : ControllerBase
+    public class AccountsController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> userManager;
+        private readonly UserManager<ApplicationUser> userManager;
         private readonly IConfiguration configuration;
-        private readonly SignInManager<IdentityUser> signInManager;
+        private readonly SignInManager<ApplicationUser> signInManager;
         private readonly IMapper mapper;
 
-        public CuentasController(UserManager<IdentityUser> userManager,
+        public AccountsController(UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
-            SignInManager<IdentityUser> signInManager,
+            SignInManager<ApplicationUser> signInManager,
             IMapper mapper)
         {
             this.userManager = userManager;
@@ -31,27 +32,27 @@ namespace RecetArreAPI.Controllers
             this.mapper = mapper;
         }
 
-        [HttpPost("registrar")]
-        public async Task<ActionResult<RespuestaAutenticacion>> Registrar(CredencialesUsuario credencialesUsuario)
+        [HttpPost("register")]
+        public async Task<ActionResult<AuthenticationResponseDto>> Register(UserCredentialsDto userCredentialsDto)
         {
-            var usuario = mapper.Map<IdentityUser>(credencialesUsuario);
-            var resultado = await userManager.CreateAsync(usuario, credencialesUsuario.Password);
+            var usuario = mapper.Map<ApplicationUser>(userCredentialsDto);
+            var resultado = await userManager.CreateAsync(usuario, userCredentialsDto.Password);
             if (resultado.Succeeded)
             {
-                return await ConstruirToken(credencialesUsuario);
+                return await BuildToken(userCredentialsDto.Email);
             }
             return BadRequest(resultado.Errors);
         }
 
-        private async Task<RespuestaAutenticacion> ConstruirToken(CredencialesUsuario credencialesUsuario)
+        private async Task<AuthenticationResponseDto> BuildToken(string email)
         {
             var claims = new List<Claim>
             {
-                new Claim("email", credencialesUsuario.Email),
-                new Claim(ClaimTypes.Email, credencialesUsuario.Email)
+                new Claim("email", email),
+                new Claim(ClaimTypes.Email, email)
             };
 
-            var usuario = await userManager.FindByEmailAsync(credencialesUsuario.Email);
+            var usuario = await userManager.FindByEmailAsync(email);
             var claimsRoles = await userManager.GetClaimsAsync(usuario!);
             var usuarioId = usuario!.Id;
             var roles = await userManager.GetRolesAsync(usuario);
@@ -69,40 +70,35 @@ namespace RecetArreAPI.Controllers
             var securityToken = new JwtSecurityToken(issuer: null, audience: null,
                 claims: claims, expires: expiracion, signingCredentials: creds);
 
-            return new RespuestaAutenticacion
+            return new AuthenticationResponseDto
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(securityToken),
-                Expiracion = expiracion,
-                UsuarioId = usuarioId
+                Expiration = expiracion,
+                UserId = usuarioId
             };
         }
 
-        [HttpGet("RenovarToken")]
+        [HttpGet("renew")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<RespuestaAutenticacion>> Renovar()
+        public async Task<ActionResult<AuthenticationResponseDto>> Renew()
         {
             var emailClaim = HttpContext.User.Claims.FirstOrDefault(x => x.Type == "email");
-            var credencialesUsuario = new CredencialesUsuario
-            {
-                Email = emailClaim!.Value,
-                Password = string.Empty
-            };
-            return await ConstruirToken(credencialesUsuario);
+            return await BuildToken(emailClaim!.Value);
         }
 
-        [HttpPost("Login")]
-        public async Task<ActionResult<RespuestaAutenticacion>> Login(CredencialesUsuario credencialesUsuario)
+        [HttpPost("login")]
+        public async Task<ActionResult<AuthenticationResponseDto>> Login(UserCredentialsDto userCredentialsDto)
         {
-            var resultado = await signInManager.PasswordSignInAsync(credencialesUsuario.Email,
-                credencialesUsuario.Password, isPersistent: false, lockoutOnFailure: false);
+            var resultado = await signInManager.PasswordSignInAsync(userCredentialsDto.Email,
+                userCredentialsDto.Password, isPersistent: false, lockoutOnFailure: false);
 
             if (resultado.Succeeded)
             {
-                return await ConstruirToken(credencialesUsuario);
+                return await BuildToken(userCredentialsDto.Email);
             }
             else
             {
-                return BadRequest("Login incorrector");
+                return BadRequest("Invalid login");
             }
         }
     }
