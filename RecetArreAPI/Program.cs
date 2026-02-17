@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RecetArreAPI.Context;
 using RecetArreAPI.Models;
+using RecetArreAPI.Profiles;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -22,7 +23,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+var mapperConfig = new MapperConfiguration(cfg =>
+{
+    cfg.AddProfile<AutoMapperProfile>();
+});
+builder.Services.AddSingleton(mapperConfig.CreateMapper());
 
 //Conexion a la base de datos
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
